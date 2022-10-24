@@ -4,6 +4,7 @@ from cs285.critics.bootstrapped_continuous_critic import \
     BootstrappedContinuousCritic
 from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
+from cs285.infrastructure.sac_utils import *
 from cs285.policies.MLP_policy import MLPPolicyAC
 from .base_agent import BaseAgent
 import gym
@@ -51,6 +52,30 @@ class SACAgent(BaseAgent):
         # HINT: You need to use the entropy term (alpha)
         # 2. Get current Q estimates and calculate critic loss
         # 3. Optimize the critic  
+
+        ob_no = ptu.from_numpy(ob_no)
+        ac_na = ptu.from_numpy(ac_na)
+        next_ob_no = ptu.from_numpy(next_ob_no)
+        re_n = ptu.from_numpy(re_n)
+        terminal_n = ptu.from_numpy(terminal_n)
+
+
+        
+        next_action_distribution = self.actor.forward(next_ob_no)
+        next_actions = next_action_distribution.rsample()
+        q_target = self.critic_target.forward(next_ob_no, next_actions)
+        q_min = q_target.min(axis=1).values
+        log_pis = next_action_distribution.log_prob(next_actions).sum(axis=1) # TODO: dobbelttjek dimension
+        targets = re_n + self.gamma*(1-terminal_n)*(q_min-self.actor.alpha*log_pis)#.detach()
+        targets = targets.detach()
+
+        q_s = self.critic.forward(ob_no,ac_na)
+        critic_loss = self.critic.loss(q_s[:, 0], targets) + self.critic.loss(q_s[:, 1], targets) 
+
+        self.critic.optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic.optimizer.step()
+
         return critic_loss
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
@@ -67,11 +92,21 @@ class SACAgent(BaseAgent):
         #     update the actor
 
         # 4. gather losses for logging
+
         loss = OrderedDict()
-        loss['Critic_Loss'] = TODO
-        loss['Actor_Loss'] = TODO
-        loss['Alpha_Loss'] = TODO
-        loss['Temperature'] = TODO
+
+        for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
+            loss['Critic_Loss'] = self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
+
+            if self.training_step % self.agent_params['critic_target_update_frequency']==0:
+                soft_update_params(self.critic, self.critic_target, self.critic_tau)
+
+
+        if self.training_step % self.actor_update_frequency == 0:
+            for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
+                loss['Actor_Loss'], loss['Alpha_Loss'], loss['Temperature']  = self.actor.update(ob_no, self.critic)
+        
+        self.training_step += 1
 
         return loss
 

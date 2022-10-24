@@ -1,3 +1,4 @@
+import xxlimited
 from cs285.policies.MLP_policy import MLPPolicy
 import torch
 import numpy as np
@@ -36,12 +37,27 @@ class MLPPolicySAC(MLPPolicy):
     @property
     def alpha(self):
         # TODO: Formulate entropy term
+        entropy = torch.exp(self.log_alpha)
+
         return entropy
 
     def get_action(self, obs: np.ndarray, sample=True) -> np.ndarray:
         # TODO: return sample from distribution if sampling
         # if not sampling return the mean of the distribution 
-        return action
+
+        obs = ptu.from_numpy(obs)
+
+        if sample:
+            action = self.forward(obs).sample()
+        
+        else:
+            action = self.forward(obs).mean
+
+        action_min, action_max = self.action_range
+        action = torch.clamp(action,action_min,action_max)
+        action = ptu.to_numpy(action)
+
+        return action[None]
 
     # This function defines the forward pass of the network.
     # You can return anything you want, but you should be able to differentiate
@@ -54,10 +70,44 @@ class MLPPolicySAC(MLPPolicy):
         # HINT: 
         # You will need to clip log values
         # You will need SquashedNormal from sac_utils file 
+
+        mean = self.mean_net(observation)
+        logstd = torch.tanh(self.logstd)
+        log_std_min, log_std_max = self.log_std_bounds
+        logstd = torch.clamp(logstd, log_std_min, log_std_max) # Clip log values
+        std = torch.exp(logstd)
+
+        action_distribution = sac_utils.SquashedNormal(mean,std) # SquashedNormal
+
         return action_distribution
 
     def update(self, obs, critic):
         # TODO Update actor network and entropy regularizer
         # return losses and alpha value
 
-        return actor_loss, alpha_loss, self.alpha
+        # Actor loss
+
+        obs = ptu.from_numpy(obs)
+
+        action_distribution = self.forward(obs)
+        action = action_distribution.rsample()
+
+        qs = critic.forward(obs, action)
+        q_min = torch.min(qs, dim=1).values
+        log_pis = action_distribution.log_prob(action).sum(axis=1)
+        actor_loss = (self.alpha*log_pis-q_min) # Is this correct?
+        actor_loss = actor_loss.mean()
+
+        self.optimizer.zero_grad()
+        actor_loss.backward()
+        self.optimizer.step()   
+
+        # Alpha loss
+        alpha_loss = -self.alpha*(log_pis+self.target_entropy).detach() # Is this correct?
+        alpha_loss = alpha_loss.mean()
+
+        self.log_alpha_optimizer.zero_grad()
+        alpha_loss.backward()
+        self.log_alpha_optimizer.step()
+
+        return actor_loss.item(), alpha_loss.item(), self.alpha
