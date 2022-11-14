@@ -65,23 +65,26 @@ class AWACAgent(DQNAgent):
         # HINT: store computed values in the provided vals list. You will use the average of this list for calculating the advantage.
         vals = []
         # TODO: get action distribution for current obs, you will use this for the value function estimate
-        dist = self.actor.critic.q_net(ob_no)
+        dist = self.eval_policy(ob_no)
         # TODO Calculate Value Function Estimate given current observation
         # HINT: You may find it helpful to utilze get_qvals defined above
         if self.agent_params['discrete']:
             for i in range(self.agent_params['ac_dim']):
-
-                val = self.get_qvals(self.actor.critic, ob_no, ac_na) * dist[i]
+                actions = torch.ones(self.agent_params['batch_size'])*i
+                actions = actions.long()
+                val = self.get_qvals(self.exploitation_critic, ob_no, actions) * torch.exp(dist.log_prob(actions))
                 vals.append(val)
         else:
             
             for _ in range(n_actions):
-                pass
+                action = self.actor.get_action(ob_no)
+                val = self.get_qvals(self.exploitation_critic, ob_no, action) #* dist.log_prob(action)
+                vals.append(val)
 
-        v_pi = torch.mean(vals)
+        v_pi = torch.stack(vals).mean(dim=0)
 
         # TODO Calculate Q-Values
-        q_vals = self.get_qvals(self.actor.critic, ob_no, ac_na)
+        q_vals = self.get_qvals(self.exploitation_critic, ob_no, ac_na.long())
 
         # TODO Calculate the Advantage using q_vals and v_pi  
         return q_vals - v_pi
@@ -93,6 +96,8 @@ class AWACAgent(DQNAgent):
             # TODO: After exploration is over, set the actor to optimize the extrinsic critic
             #HINT: Look at method ArgMaxPolicy.set_critic
 
+            self.actor.set_critic(self.exploitation_critic)
+
         if (self.t > self.learning_starts
                 and self.t % self.learning_freq == 0
                 and self.replay_buffer.can_sample(self.batch_size)
@@ -101,8 +106,8 @@ class AWACAgent(DQNAgent):
             # Get the current explore reward weight and exploit reward weight
             #       using the schedule's passed in (see __init__)
             # COMMENT: Until part 3, explore_weight = 1, and exploit_weight = 0
-            explore_weight = self.explore_weight_schedule.value(self.t)
-            exploit_weight = self.exploit_weight_schedule.value(self.t)
+            explore_weight = 1 # self.explore_weight_schedule.value(self.t) # 1
+            exploit_weight = 0 # self.exploit_weight_schedule.value(self.t) # 0 
 
 
             # TODO: Run Exploration Model #
@@ -134,7 +139,7 @@ class AWACAgent(DQNAgent):
             # TODO: update actor
             # 1): Estimate the advantage
             # 2): Calculate the awac actor loss
-            advantage = self.estimate_advantage(self, ob_no, ac_na, re_n, next_ob_no, terminal_n)
+            advantage = self.estimate_advantage(ob_no, ac_na, re_n, next_ob_no, terminal_n)
             actor_loss = self.eval_policy.update(ob_no, ac_na, advantage)
 
             # TODO: Update Target Networks #

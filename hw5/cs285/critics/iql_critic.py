@@ -45,7 +45,8 @@ class IQLCritic(BaseCritic):
         # TODO define value function
         # HINT: see Q_net definition above and optimizer below
         ### YOUR CODE HERE ###
-        self.v_net = None
+        network_initializer = hparams['v_func']
+        self.v_net = network_initializer(self.ob_dim)
 
         self.v_optimizer = self.optimizer_spec.constructor(
             self.v_net.parameters(),
@@ -61,7 +62,10 @@ class IQLCritic(BaseCritic):
         """
         Implement expectile loss on the difference between q and v
         """
-        pass
+        indicator = torch.where(diff<=0, 1, 0)
+        L2 =  abs(self.iql_expectile - indicator)
+
+        return torch.mean(L2)
 
     def update_v(self, ob_no, ac_na):
         """
@@ -72,7 +76,9 @@ class IQLCritic(BaseCritic):
         
 
         ### YOUR CODE HERE ###
-        value_loss = None
+        v = self.v_net(ob_no)
+        q = self.q_net(ob_no, ac_na)
+        value_loss = self.expectile_loss(q-v)
         
         assert value_loss.shape == ()
         self.v_optimizer.zero_grad()
@@ -95,7 +101,9 @@ class IQLCritic(BaseCritic):
         terminal_n = ptu.from_numpy(terminal_n)
         
         ### YOUR CODE HERE ###
-        loss = None
+        v = self.v_net(next_ob_no)
+        q = self.q_net_target(ob_no, ac_na)
+        loss = torch.mean((reward_n+ self.gamma * v - q)**2)
 
         assert loss.shape == ()
         self.optimizer.zero_grad()
