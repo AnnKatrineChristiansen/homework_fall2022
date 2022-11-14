@@ -45,6 +45,35 @@ class CQLCritic(BaseCritic):
     def dqn_loss(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
         """ Implement DQN Loss """
 
+        qa_t_values = self.q_net(ob_no)
+        q_t_values = torch.gather(qa_t_values, 1, ac_na.unsqueeze(1)).squeeze(1)
+        
+        # TODO compute the Q-values from the target network 
+        qa_tp1_values = self.q_net_target(next_ob_no) 
+         
+
+        if self.double_q:
+            # You must fill this part for Q2 of the Q-learning portion of the homework.
+            # In double Q-learning, the best action is selected using the Q-network that
+            # is being updated, but the Q-value for this action is obtained from the
+            # target Q-network. Please review Lecture 8 for more details,
+            # and page 4 of https://arxiv.org/pdf/1509.06461.pdf is also a good reference.
+            
+            ac_tp1 = self.q_net(next_ob_no).argmax(1)
+            q_tp1 = torch.gather(qa_tp1_values, 1, ac_tp1.unsqueeze(1)).squeeze(1)
+
+        else:
+            q_tp1, _ = qa_tp1_values.max(dim=1)
+
+        # TODO compute targets for minimizing Bellman error
+        # HINT: as you saw in lecture, this would be:
+            #currentReward + self.gamma * qValuesOfNextTimestep * (not terminal)
+        target = reward_n + self.gamma * q_tp1 * (1-terminal_n)
+        target = target.detach()
+
+        assert q_t_values.shape == target.shape
+        loss = self.loss(q_t_values, target)
+
         return loss, qa_t_values, q_t_values
 
 
@@ -71,22 +100,25 @@ class CQLCritic(BaseCritic):
         terminal_n = ptu.from_numpy(terminal_n)
 
         # Compute the DQN Loss 
-        loss, qa_t_values, q_t_values = self.dqn_loss(
-            ob_no, ac_na, next_ob_no, reward_n, terminal_n
-            )
+        loss, qa_t_values, q_t_values = self.dqn_loss(ob_no, ac_na, next_ob_no, reward_n, terminal_n)
         
         # CQL Implementation
         # TODO: Implement CQL as described in the pdf and paper
         # Hint: After calculating cql_loss, augment the loss appropriately
-        q_t_logsumexp = None
-        cql_loss = None
+        q_t_logsumexp = torch.logsumexp(qa_t_values, 1)
+        cql_loss = self.cql_alpha * torch.mean(q_t_logsumexp - q_t_values)
+        loss += cql_loss
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
         info = {'Training Loss': ptu.to_numpy(loss)}
 
         # TODO: Uncomment these lines after implementing CQL
-        # info['CQL Loss'] = ptu.to_numpy(cql_loss)
-        # info['Data q-values'] = ptu.to_numpy(q_t_values).mean()
-        # info['OOD q-values'] = ptu.to_numpy(q_t_logsumexp).mean()
+        info['CQL Loss'] = ptu.to_numpy(cql_loss)
+        info['Data q-values'] = ptu.to_numpy(q_t_values).mean()
+        info['OOD q-values'] = ptu.to_numpy(q_t_logsumexp).mean()
         
         self.learning_rate_scheduler.step()
 
