@@ -106,12 +106,12 @@ class AWACAgent(DQNAgent):
             # Get the current explore reward weight and exploit reward weight
             #       using the schedule's passed in (see __init__)
             # COMMENT: Until part 3, explore_weight = 1, and exploit_weight = 0
-            explore_weight = 1 # self.explore_weight_schedule.value(self.t) # 1
-            exploit_weight = 0 # self.exploit_weight_schedule.value(self.t) # 0 
+            explore_weight = self.explore_weight_schedule.value(self.t) # 1
+            exploit_weight = self.exploit_weight_schedule.value(self.t) # 0 
 
 
             # TODO: Run Exploration Model #
-            # Evaluate the exploration model on s' to get the exploration bonus
+            # Evaluate the exploration model on s to get the exploration bonus
             # HINT: Normalize the exploration bonus, as RND values vary highly in magnitude
             expl_bonus = self.exploration_model.forward_np(ob_no) 
             expl_bonus = normalize(expl_bonus,expl_bonus.mean(),self.running_rnd_rew_std)
