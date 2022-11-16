@@ -103,7 +103,6 @@ class IQLAgent(DQNAgent):
             #       and scaled by self.exploit_rew_scale
             env_reward = (re_n + self.exploit_rew_shift) * self.exploit_rew_scale
 
-
             # TODO: Update Critics And Exploration Model #
             # 1): Update the exploration model (based off s')
             # 2): Update the exploration critic (based off mixed_reward)
@@ -114,8 +113,6 @@ class IQLAgent(DQNAgent):
             exploitation_critic_loss = self.exploitation_critic.update(ob_no, ac_na, next_ob_no,env_reward, terminal_n)
             exploitation_critic_loss.update_v(ob_no, ac_na)
             exploitation_critic_loss.update_q(ob_no, ac_na, next_ob_no, env_reward, terminal_n)
-
-
 
             # TODO: update actor as in AWAC
             # 1): Estimate the advantage

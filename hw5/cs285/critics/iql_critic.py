@@ -77,7 +77,7 @@ class IQLCritic(BaseCritic):
 
         ### YOUR CODE HERE ###
         v = self.v_net(ob_no)
-        q = self.q_net(ob_no, ac_na)
+        q = self.q_net_target(ob_no, ac_na).detach()
         value_loss = self.expectile_loss(q-v)
         
         assert value_loss.shape == ()
@@ -101,8 +101,8 @@ class IQLCritic(BaseCritic):
         terminal_n = ptu.from_numpy(terminal_n)
         
         ### YOUR CODE HERE ###
-        v = self.v_net(next_ob_no)
-        q = self.q_net_target(ob_no, ac_na)
+        v = self.v_net(next_ob_no).detach()
+        q = self.q_net(ob_no, ac_na)
         loss = torch.mean((reward_n + self.gamma * v - q)**2)
 
         assert loss.shape == ()
