@@ -15,4 +15,4 @@ for num, env in enumerate(env_list):
 if __name__ == "__main__":
     for command in commands:
         args = shlex.split(command)
-        subprocess.run(args)
+        subprocess.Popen(args)
