@@ -132,7 +132,7 @@ python cs285/scripts/run_hw5_awac.py --env_name PointmassMedium-v0 --use_rnd --n
 ## Part 5
 
 
-PointmassEasy-v0 Supervised:
+PointmassEasy-v0 Supervised: lambda = 10
 
 ```
 python cs285/scripts/run_hw5_iql.py --env_name PointmassEasy-v0 --exp_name q5_easy_supervised_lam10_tau0.5 --use_rnd --num_exploration_steps=20000 --awac_lambda=10 --iql_expectile=0.5
@@ -152,7 +152,7 @@ python cs285/scripts/run_hw5_iql.py --env_name PointmassEasy-v0 --exp_name q5_ea
 
 ```
 
-PointmassEasy-v0 Unsupervised:
+PointmassEasy-v0 Unsupervised: lambda = 1
 
 ```
 python cs285/scripts/run_hw5_iql.py --env_name PointmassEasy-v0 --exp_name q5_easy_unsupervised_lam1_tau0.5 --use_rnd --unsupervised_exploration --num_exploration_steps=20000 --awac_lambda=1 --iql_expectile=0.5
@@ -171,7 +171,7 @@ python cs285/scripts/run_hw5_iql.py --env_name PointmassEasy-v0 --exp_name q5_ea
 
 ```
 
-PointmassMedium-v0 Supervised:
+PointmassMedium-v0 Supervised: lambda = 50 
 
 ```
 python cs285/scripts/run_hw5_iql.py --env_name PointmassMedium-v0 --exp_name q5_iql_medium_supervised_lam50_tau0.5 --use_rnd --num_exploration_steps=20000 --awac_lambda=50 --iql_expectile=0.5
@@ -190,7 +190,7 @@ python cs285/scripts/run_hw5_iql.py --env_name PointmassMedium-v0 --exp_name q5_
 
 ```
 
-PointmassMedium-v0 Unsupervised:
+PointmassMedium-v0 Unsupervised: lambda = 1
 
 ```
 
